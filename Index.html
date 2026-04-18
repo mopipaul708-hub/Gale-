@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Mobile Fortnite Prototype</title>
+<style>
+  body { margin:0; overflow:hidden; }
+  canvas { display:block; }
+
+  /* Mobile buttons */
+  .btn {
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    text-align: center;
+    line-height: 70px;
+    color: white;
+    font-weight: bold;
+  }
+
+  #shoot { right:20px; bottom:100px; }
+  #build { right:20px; bottom:20px; }
+  #joystick {
+    left:20px;
+    bottom:40px;
+    width:100px;
+    height:100px;
+    background: rgba(255,255,255,0.1);
+    border-radius:50%;
+  }
+</style>
+</head>
+<body>
+
+<div id="shoot" class="btn">FIRE</div>
+<div id="build" class="btn">BUILD</div>
+<div id="joystick"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+
+<script>
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// PLAYER
+let player = new THREE.Mesh(
+  new THREE.BoxGeometry(1,1,1),
+  new THREE.MeshBasicMaterial({color: 0x00ff00})
+);
+scene.add(player);
+
+// GROUND
+let ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200,200),
+  new THREE.MeshBasicMaterial({color: 0x444444})
+);
+ground.rotation.x = -Math.PI/2;
+scene.add(ground);
+
+// WALLS
+let walls = [];
+
+// BULLETS
+let bullets = [];
+
+// ENEMY
+let enemy = new THREE.Mesh(
+  new THREE.BoxGeometry(1,1,1),
+  new THREE.MeshBasicMaterial({color: 0xff0000})
+);
+enemy.position.set(5,0.5,5);
+scene.add(enemy);
+
+// CAMERA OFFSET
+camera.position.set(0,5,10);
+
+// JOYSTICK CONTROL
+let move = {x:0, y:0};
+
+let joystick = document.getElementById("joystick");
+joystick.addEventListener("touchmove", e=>{
+  let touch = e.touches[0];
+  move.x = (touch.clientX - 70)/50;
+  move.y = (touch.clientY - (window.innerHeight-70))/50;
+});
+
+// SHOOT
+document.getElementById("shoot").onclick = ()=>{
+  let bullet = new THREE.Mesh(
+    new THREE.SphereGeometry(0.2),
+    new THREE.MeshBasicMaterial({color: 0xffff00})
+  );
+  bullet.position.copy(player.position);
+  bullet.velocity = new THREE.Vector3(0,0,-0.5);
+  bullets.push(bullet);
+  scene.add(bullet);
+};
+
+// BUILD
+document.getElementById("build").onclick = ()=>{
+  let wall = new THREE.Mesh(
+    new THREE.BoxGeometry(2,2,0.5),
+    new THREE.MeshBasicMaterial({color: 0x0000ff})
+  );
+  wall.position.copy(player.position);
+  wall.position.z -= 2;
+  walls.push(wall);
+  scene.add(wall);
+};
+
+// GAME LOOP
+function animate(){
+  requestAnimationFrame(animate);
+
+  // Move player
+  player.position.x += move.x * 0.1;
+  player.position.z += move.y * 0.1;
+
+  // Camera follow
+  camera.position.x = player.position.x;
+  camera.position.z = player.position.z + 10;
+  camera.lookAt(player.position);
+
+  // Enemy follow
+  let dx = player.position.x - enemy.position.x;
+  let dz = player.position.z - enemy.position.z;
+  enemy.position.x += dx * 0.01;
+  enemy.position.z += dz * 0.01;
+
+  // Bullets
+  bullets.forEach(b=>{
+    b.position.add(b.velocity);
+
+    if(b.position.distanceTo(enemy.position) < 1){
+      scene.remove(enemy);
+    }
+  });
+
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>
